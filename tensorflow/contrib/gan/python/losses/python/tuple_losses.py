@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for pip package dependencies tensorflow versions."""
-
+"""TFGAN utilities for loss functions that accept GANModel namedtuples."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import autograd
+# pylint: disable=wildcard-import
+from tensorflow.contrib.gan.python.losses.python import tuple_losses_impl
+from tensorflow.contrib.gan.python.losses.python.tuple_losses_impl import *
+# pylint: enable=wildcard-import
+from tensorflow.python.util.all_util import remove_undocumented
 
-from tensorflow.python.platform import test
-
-
-class PipDependenciesTest(test.TestCase):
-
-  def testAutograd(self):
-    self.assertTrue(autograd.grad is not None)
+__all__ = tuple_losses_impl.__all__
+remove_undocumented(__name__, __all__)
