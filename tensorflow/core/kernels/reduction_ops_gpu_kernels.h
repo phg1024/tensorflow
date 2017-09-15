@@ -176,7 +176,7 @@ __global__ void BlockReduceKernel(
       max(min(num_elems - bid * blockDim.x, num_threads), 0);
 
   sum = BlockReduce(temp_storage)
-            .template Reduce(sum, op, num_elements_to_reduce);
+            .template Reduce<Op>(sum, op, num_elements_to_reduce);
 
   if (tid == 0) out[bid] = sum;
 }
@@ -211,7 +211,7 @@ __global__ void RowReduceKernel(
 
   __shared__ typename WarpReduce::TempStorage temp_storage;
 
-  sum = WarpReduce(temp_storage).template Reduce(sum, op, min(num_cols, 32));
+  sum = WarpReduce(temp_storage).template Reduce<Op>(sum, op, min(num_cols, 32));
 
   if (row < num_rows && lane == 0) out[row] = sum;
 }

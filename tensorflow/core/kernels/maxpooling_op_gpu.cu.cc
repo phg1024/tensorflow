@@ -20,6 +20,7 @@ limitations under the License.
 #include <stdio.h>
 #include <cfloat>
 
+#include "cuda/include/cuda.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/kernels/maxpooling_op.h"
@@ -89,6 +90,24 @@ __global__ void MaxPoolForwardNCHW(const int nthreads, const dtype* bottom_data,
   }
 }
 
+template <typename T>
+__device__ T lowesthack() {
+  return Eigen::NumTraits<T>::lowest();
+}
+
+template <>
+__device__ Eigen::QInt8 lowesthack<Eigen::QInt8>() {
+  return Eigen::QInt8(-128);
+}
+
+template <typename T>
+__device__ bool comphack(T a, T b) { return a > b; }
+
+template <>
+__device__ bool comphack<Eigen::QInt8>(Eigen::QInt8 a, Eigen::QInt8 b) {
+  return a.value > b.value;
+}
+
 template <typename dtype>
 __global__ void MaxPoolForwardNHWC(const int nthreads, const dtype* bottom_data,
                                    const int height, const int width,
@@ -110,13 +129,15 @@ __global__ void MaxPoolForwardNHWC(const int nthreads, const dtype* bottom_data,
     int wend = min(wstart + kernel_w, width);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
-    dtype maxval = Eigen::NumTraits<dtype>::lowest();
+    //dtype maxval = Eigen::NumTraits<dtype>::lowest();
+    dtype maxval = lowesthack<dtype>();
     int maxidx = -1;
     const dtype* bottom_data_n = bottom_data + n * height * width * channels;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
         int idx = (h * width + w) * channels + c;
-        if (bottom_data_n[idx] > maxval) {
+        //if (bottom_data_n[idx] > maxval) {
+        if (comphack<dtype>(bottom_data_n[idx], maxval)) {
           maxidx = idx;
           maxval = bottom_data_n[idx];
         }
@@ -433,6 +454,8 @@ typedef Eigen::GpuDevice GPUDevice;
   template struct MaxPoolGradBackwardNoMask<T>;
 
 TF_CALL_GPU_NUMBER_TYPES(DEFINE_GPU_KERNELS);
+
+template struct MaxPoolForwardWithOptionalArgmax<Eigen::QInt8>;
 
 #undef DEFINE_GPU_KERNELS
 

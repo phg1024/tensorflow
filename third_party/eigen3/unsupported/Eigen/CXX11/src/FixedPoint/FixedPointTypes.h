@@ -49,9 +49,9 @@ struct scalar_product_traits<QInt32, double> {
 // the compiler from silently type cast the mantissa into a bigger or a smaller
 // representation.
 struct QInt8 {
-  QInt8() {}
-  QInt8(const int8_t v) : value(v) {}
-  QInt8(const QInt32 v);
+  EIGEN_DEVICE_FUNC QInt8() {}
+  EIGEN_DEVICE_FUNC QInt8(const int8_t v) : value(v) {}
+  EIGEN_DEVICE_FUNC QInt8(const QInt32 v);
 
   operator int() const { return static_cast<int>(value); }
 

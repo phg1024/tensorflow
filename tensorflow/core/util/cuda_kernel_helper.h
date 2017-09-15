@@ -399,6 +399,32 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
   return __longlong_as_double(old);
 }
 
+template <typename T, size_t n>
+struct AtomicAddIntegerImpl;
+
+template<typename T>
+struct AtomicAddIntegerImpl<T, 1> {
+  inline __device__ void operator()(T *address, T val) {
+    unsigned int * address_as_ui =
+      (unsigned int *)(address - ((size_t)address & 3));
+    unsigned int old = *address_as_ui;
+    unsigned int shift = (((size_t)address & 3) * 8);
+    unsigned int sum;
+    unsigned int assumed;
+
+    do {
+      assumed = old;
+      sum = val + T((old >> shift) & 0xff);
+      old = (old & ~(0x000000ff << shift)) | (sum << shift);
+      old = atomicCAS(address_as_ui, assumed, old);
+    } while (assumed != old);
+  }
+};
+
+static inline __device__ void CudaAtomicAdd(Eigen::QInt8 *address, Eigen::QInt8 val) {
+  AtomicAddIntegerImpl<int8_t, sizeof(int8_t)>()(&address->value, val.value);
+}
+
 // Helper functions for CudaAtomicAdd(half*, half), below.
 //
 // Note that if __CUDA_ARCH__ >= 530, we could probably use __hadd2()
